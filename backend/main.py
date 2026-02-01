@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .models import LoginRequest, LoginResponse
 from .users import verify_user
+from fastapi import UploadFile, File
 
 app = FastAPI(title="Login API")
 
@@ -29,3 +30,10 @@ def login(request: LoginRequest):
 @app.post("/api/scenarios/input")
 def create_scenario(payload: dict):
     return {"status": "received", "data": payload}
+
+
+
+
+@app.post("/api/scenarios/upload")
+async def upload_scenario(file: UploadFile = File(...)):
+    return {"filename": file.filename}
