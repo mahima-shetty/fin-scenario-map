@@ -1,4 +1,6 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import Button from "./Button";
+import { getAuthState, signOut } from "../services/authStorage";
 
 function Icon({ name }: { name: "dashboard" | "upload" | "create" | "login" }) {
   const common = { width: 18, height: 18, fill: "none", stroke: "currentColor", strokeWidth: 2 };
@@ -40,6 +42,8 @@ function Icon({ name }: { name: "dashboard" | "upload" | "create" | "login" }) {
 
 export default function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const auth = getAuthState();
 
   const title =
     location.pathname === "/"
@@ -93,14 +97,6 @@ export default function AppLayout() {
             <Icon name="create" />
             Create
           </NavLink>
-
-          <NavLink
-            to="/login"
-            className={({ isActive }) => `navItem ${isActive ? "navItemActive" : ""}`}
-          >
-            <Icon name="login" />
-            Sign in
-          </NavLink>
         </nav>
       </aside>
 
@@ -110,7 +106,19 @@ export default function AppLayout() {
             <div style={{ fontWeight: 750 }}>{title}</div>
             <div className="topbarTitle">Navy banking UI · secure workflow · audit-ready</div>
           </div>
-          <div className="badge badgeOk">Environment: Local</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {auth.email ? <div className="badge">{auth.email}</div> : null}
+            <div className="badge badgeOk">Environment: Local</div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                signOut();
+                navigate("/login", { replace: true });
+              }}
+            >
+              Sign out
+            </Button>
+          </div>
         </header>
 
         <div className="content container">
