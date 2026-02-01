@@ -7,6 +7,7 @@ interface InputFieldProps {
   type?: string;
   placeholder?: string;
   required?: boolean;
+  helperText?: string;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -16,23 +17,23 @@ const InputField: React.FC<InputFieldProps> = ({
   type = "text",
   placeholder = "",
   required = false,
+  helperText,
 }) => {
   return (
-    <div style={{ marginBottom: "1rem" }}>
-      <label style={{ display: "block", marginBottom: "0.25rem" }}>{label}</label>
+    <div>
+      <label className="fieldLabel">
+        {label}
+        {required ? " *" : ""}
+      </label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        style={{
-          width: "100%",
-          padding: "0.5rem",
-          borderRadius: "4px",
-          border: "1px solid #ccc",
-        }}
+        className="input"
       />
+      {helperText ? <div className="helper">{helperText}</div> : null}
     </div>
   );
 };

@@ -6,6 +6,7 @@ interface ButtonProps {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   style?: React.CSSProperties;
+  variant?: "primary" | "secondary" | "danger";
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -14,22 +15,17 @@ const Button: React.FC<ButtonProps> = ({
   type = "button",
   disabled = false,
   style = {},
+  variant = "primary",
 }) => {
+  const variantClass =
+    variant === "primary" ? "btnPrimary" : variant === "danger" ? "btnDanger" : "";
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: "0.5rem 1rem",
-        borderRadius: "4px",
-        border: "none",
-        backgroundColor: disabled ? "#ccc" : "#007bff",
-        color: "#fff",
-        cursor: disabled ? "not-allowed" : "pointer",
-        fontWeight: 600,
-        ...style,
-      }}
+      className={`btn ${variantClass}`}
+      style={style}
     >
       {children}
     </button>
