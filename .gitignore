@@ -34,3 +34,6 @@ coverage/
 # Windows
 Thumbs.db
 Desktop.ini
+
+backend/__pycache__/*
+backend/main.pyc
