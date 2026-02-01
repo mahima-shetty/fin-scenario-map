@@ -24,3 +24,8 @@ def login(request: LoginRequest):
         return LoginResponse(success=True, message="Login successful")
     else:
         return LoginResponse(success=False, message="Invalid email or password")
+
+
+@app.post("/api/scenarios/input")
+def create_scenario(payload: dict):
+    return {"status": "received", "data": payload}
