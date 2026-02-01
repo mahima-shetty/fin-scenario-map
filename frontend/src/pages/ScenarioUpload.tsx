@@ -4,12 +4,27 @@ import Button from "../components/Button";
 const ScenarioUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
-  };
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (!e.target.files || e.target.files.length === 0) return;
+
+  const selectedFile = e.target.files[0];
+
+  const allowedTypes = ["text/csv", "application/pdf", "application/json"];
+
+  if (!allowedTypes.includes(selectedFile.type)) {
+    alert("Only CSV, PDF or JSON files are allowed");
+    return;
+  }
+
+  if (selectedFile.size > MAX_FILE_SIZE) {
+    alert("File size must be less than 5MB");
+    return;
+  }
+
+  setFile(selectedFile);
+};
 
   const handleUpload = async () => {
     if (!file) {
@@ -56,7 +71,7 @@ const ScenarioUpload = () => {
           <div className="form">
             <div>
               <label className="fieldLabel">Scenario file</label>
-              <input type="file" onChange={handleFileChange} className="input" />
+              <input type="file" accept=".csv,.json,.pdf" onChange={handleFileChange} className="input" />
               <div className="helper">
                 {file ? (
                   <span>
