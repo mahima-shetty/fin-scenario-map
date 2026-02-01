@@ -1,63 +1,119 @@
 import { Link } from "react-router-dom";
+import Button from "../components/Button";
 
 const Dashboard = () => {
   // Mock data for now
   const recentScenarios = [
-    { id: "scn-001", name: "Credit Risk Stress Test", status: "Completed" },
-    { id: "scn-002", name: "Liquidity Shock Scenario", status: "Processing" },
+    { id: "scn-001", name: "Credit Risk Stress Test", risk: "Credit", status: "Completed" },
+    { id: "scn-002", name: "Liquidity Shock Scenario", risk: "Liquidity", status: "Processing" },
+    { id: "scn-003", name: "Interest Rate Shock", risk: "Market", status: "Queued" },
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      {/* Header */}
-      <h1>Fin Scenario Map</h1>
-      <p>
-        Analyze financial scenarios, map risks, and generate recommendations.
-      </p>
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <h1>Operational overview</h1>
+        <p>
+          Upload or create scenarios, track processing, and keep an audit-ready trail of results.
+        </p>
+      </div>
 
-      <hr />
-
-      {/* Quick Actions */}
-      <section>
-        <h2>Quick Actions</h2>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <Link to="/scenarios/upload">
-            <button>Upload Scenario</button>
-          </Link>
-
-          <Link to="/scenarios/new">
-            <button>Create Scenario</button>
-          </Link>
+      <div className="grid3" style={{ marginBottom: 14 }}>
+        <div className="card">
+          <div className="cardBody">
+            <div className="topbarTitle">Scenarios processed</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>128</div>
+            <div className="helper">Last 30 days</div>
+          </div>
         </div>
-      </section>
+        <div className="card">
+          <div className="cardBody">
+            <div className="topbarTitle">In progress</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>2</div>
+            <div className="helper">Processing queue</div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="cardBody">
+            <div className="topbarTitle">Controls status</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+              <span className="badge badgeOk">CORS enabled</span>
+              <span className="badge badgeOk">Auth ready</span>
+              <span className="badge badgeWarn">Scenario API: pending</span>
+            </div>
+            <div className="helper">Connect scenario endpoints to remove “pending”.</div>
+          </div>
+        </div>
+      </div>
 
-      <hr />
+      <div className="grid2" style={{ marginBottom: 14 }}>
+        <div className="card">
+          <div className="cardBody">
+            <h2>Quick actions</h2>
+            <p>Start a new workflow with bank-grade defaults.</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+              <Link to="/scenarios/upload">
+                <Button>Upload scenario</Button>
+              </Link>
+              <Link to="/scenarios/new">
+                <Button variant="secondary">Create scenario</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
 
-      {/* Recent Scenarios */}
-      <section>
-        <h2>Recent Scenarios</h2>
+        <div className="card">
+          <div className="cardBody">
+            <h2>System health</h2>
+            <p>High-level service indicators for local development.</p>
+            <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+              <div className="badge badgeOk">Frontend: running</div>
+              <div className="badge badgeOk">Backend: running</div>
+              <div className="badge badgeWarn">Scenario endpoints: 404 (not implemented)</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {recentScenarios.length === 0 ? (
-          <p>No scenarios yet</p>
-        ) : (
-          <ul>
-            {recentScenarios.map((scn) => (
-              <li key={scn.id}>
-                <strong>{scn.name}</strong> — {scn.status}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="card">
+        <div className="cardBody">
+          <h2>Recent scenarios</h2>
+          <p>Most recent submissions (mock data).</p>
 
-      <hr />
-
-      {/* System Status */}
-      <section>
-        <h2>System Status</h2>
-        <p>Backend: ✅ Connected</p>
-        <p>Audit Logging: ✅ Enabled</p>
-      </section>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Risk</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentScenarios.map((scn) => (
+                <tr key={scn.id}>
+                  <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>{scn.id}</td>
+                  <td style={{ fontWeight: 700 }}>{scn.name}</td>
+                  <td>{scn.risk}</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        scn.status === "Completed"
+                          ? "badgeOk"
+                          : scn.status === "Processing"
+                            ? "badgeWarn"
+                            : ""
+                      }`}
+                    >
+                      {scn.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

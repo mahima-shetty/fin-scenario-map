@@ -7,9 +7,11 @@ const ScenarioInput = () => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [riskType, setRiskType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     try {
+      setSubmitting(true);
       await submitScenario({
         name,
         description,
@@ -19,38 +21,56 @@ const ScenarioInput = () => {
       alert("Scenario submitted successfully");
     } catch (error) {
       alert("Submission failed");
+    } finally {
+      setSubmitting(false);
     }
   };
   
 
   return (
-    <div style={{ padding: "24px", maxWidth: "600px" }}>
-      <h1>Create Scenario</h1>
-      <p>Manually enter a financial scenario for analysis.</p>
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <h1>Create scenario</h1>
+        <p>Capture a scenario with consistent metadata and submit for analysis.</p>
+      </div>
 
-      <InputField
-        label="Scenario Name"
-        value={name}
-        onChange={(value) => setName(value)}
-        placeholder="e.g. Interest Rate Shock"
-      />
+      <div className="card" style={{ maxWidth: 760 }}>
+        <div className="cardBody">
+          <div className="form">
+            <InputField
+              label="Scenario name"
+              value={name}
+              onChange={(value) => setName(value)}
+              placeholder="e.g. Interest Rate Shock"
+              helperText="Use a short, audit-friendly title."
+              required
+            />
 
-      <InputField
-        label="Description"
-        value={description}
-        onChange={(value) => setDescription(value)}
-        placeholder="Describe the scenario"
-      />
+            <InputField
+              label="Description"
+              value={description}
+              onChange={(value) => setDescription(value)}
+              placeholder="Describe triggers, assumptions, and expected impacts"
+              helperText="Keep it specific enough for reviewers and model owners."
+            />
 
-      <InputField
-        label="Risk Type"
-        value={riskType}
-        onChange={(value) => setRiskType(value)}
-        placeholder="Credit / Market / Liquidity"
-      />
+            <InputField
+              label="Risk type"
+              value={riskType}
+              onChange={(value) => setRiskType(value)}
+              placeholder="Credit / Market / Liquidity"
+              helperText="Helps route workflows, approvals, and reporting."
+              required
+            />
 
-      <div style={{ marginTop: "16px" }}>
-        <Button onClick={handleSubmit}>Submit</Button>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
+              <Button disabled={submitting || !name || !riskType} onClick={() => void handleSubmit()}>
+                {submitting ? "Submitting..." : "Submit scenario"}
+              </Button>
+              <span className="helper">Backend endpoint currently returns 404 until implemented.</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
