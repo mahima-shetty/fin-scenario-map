@@ -37,3 +37,8 @@ Desktop.ini
 
 backend/__pycache__/*
 backend/main.pyc
+
+
+
+notebooks/.ipynb_checkpoints/
+**/.ipynb_checkpoints/
