@@ -1,4 +1,4 @@
-// src/pages/LoginPage.tsx
+// src/pages/Login.tsx
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import InputField from "../components/InputField";
