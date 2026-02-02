@@ -1,21 +1,43 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+import { apiClient } from "./apiClient";
+import type {
+  ScenarioResultResponse,
+  ScenarioSubmitRequest,
+  ScenarioSubmitResponse,
+  ScenarioUploadResponse,
+} from "../types/scenario";
 
-export async function submitScenario(data: {
-  name: string;
-  description: string;
-  riskType: string;
-}) {
-  const response = await fetch(`${API_BASE_URL}/api/scenarios/input`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+export async function submitScenario(
+  data: ScenarioSubmitRequest
+): Promise<ScenarioSubmitResponse> {
+  const response = await apiClient.post<ScenarioSubmitResponse>(
+    "/api/scenarios/input",
+    data
+  );
+  return response.data;
+}
 
-  if (!response.ok) {
-    throw new Error("Failed to submit scenario");
-  }
+export async function uploadScenario(
+  file: File
+): Promise<ScenarioUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
 
-  return response.json();
+  const response = await apiClient.post<ScenarioUploadResponse>(
+    "/api/scenarios/upload",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+
+  return response.data;
+}
+
+export async function fetchScenarioResult(
+  id: string
+): Promise<ScenarioResultResponse> {
+  const response = await apiClient.get<ScenarioResultResponse>(
+    `/api/scenarios/${encodeURIComponent(id)}/result`
+  );
+  return response.data;
 }

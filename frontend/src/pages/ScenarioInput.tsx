@@ -2,36 +2,45 @@ import { useState } from "react";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import { submitScenario } from "../services/scenarioService";
+import { toApiError } from "../services/apiClient";
 
 const ScenarioInput = () => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [riskType, setRiskType] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+      setError("");
+      setSuccess("");
       await submitScenario({
         name,
         description,
         riskType,
       });
-  
-      alert("Scenario submitted successfully");
+
+      setSuccess("Scenario submitted successfully.");
+      setName("");
+      setDescription("");
+      setRiskType("");
     } catch (error) {
-      alert("Submission failed");
+      setError(toApiError(error).message);
     } finally {
       setSubmitting(false);
     }
   };
-  
 
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
         <h1>Create scenario</h1>
-        <p>Capture a scenario with consistent metadata and submit for analysis.</p>
+        <p>
+          Capture a scenario with consistent metadata and submit for analysis.
+        </p>
       </div>
 
       <div className="card" style={{ maxWidth: 760 }}>
@@ -63,11 +72,24 @@ const ScenarioInput = () => {
               required
             />
 
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
-              <Button disabled={submitting || !name || !riskType} onClick={() => void handleSubmit()}>
+            {error ? <div className="error">{error}</div> : null}
+            {success ? <div className="badge badgeOk">{success}</div> : null}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
+              <Button
+                disabled={submitting || !name || !riskType}
+                onClick={() => void handleSubmit()}
+              >
                 {submitting ? "Submitting..." : "Submit scenario"}
               </Button>
-              <span className="helper">Backend endpoint currently returns 404 until implemented.</span>
+              <span className="helper">Posts to `/api/scenarios/input`.</span>
             </div>
           </div>
         </div>
