@@ -1,33 +1,71 @@
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import ButtonLink from "../components/ButtonLink";
+import { fetchScenarioResult } from "../services/scenarioService";
+import type { ScenarioResultResponse } from "../types/scenario";
+import { toApiError } from "../services/apiClient";
 
 const ScenarioResult = () => {
   const { id } = useParams();
 
-  // Mock response (later replaced by API)
-  const result = {
-    scenarioName: "Interest Rate Shock",
-    riskType: "Market Risk",
-    confidenceScore: 0.82,
-    createdAt: "2026-02-01",
-    recommendations: [
-      "Increase capital buffer by 10%",
-      "Reprice floating-rate products",
-      "Hedge long-term exposure",
-    ],
-    historicalCases: [
-      {
-        id: "HC-001",
-        name: "2018 Rate Hike",
-        similarity: "87%",
-      },
-      {
-        id: "HC-002",
-        name: "2020 Inflation Spike",
-        similarity: "79%",
-      },
-    ],
-  };
+  const mockResult: ScenarioResultResponse = useMemo(
+    () => ({
+      scenarioName: "Interest Rate Shock",
+      riskType: "Market Risk",
+      confidenceScore: 0.82,
+      createdAt: "2026-02-01",
+      recommendations: [
+        "Increase capital buffer by 10%",
+        "Reprice floating-rate products",
+        "Hedge long-term exposure",
+      ],
+      historicalCases: [
+        {
+          id: "HC-001",
+          name: "2018 Rate Hike",
+          similarity: "87%",
+        },
+        {
+          id: "HC-002",
+          name: "2020 Inflation Spike",
+          similarity: "79%",
+        },
+      ],
+    }),
+    []
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<ScenarioResultResponse>(mockResult);
+
+  useEffect(() => {
+    if (!id) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetchScenarioResult(id);
+        if (!cancelled) setResult(res);
+      } catch (err) {
+        if (!cancelled) {
+          setError(toApiError(err).message);
+          setResult(mockResult);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, mockResult]);
 
   return (
     <div>
@@ -62,6 +100,13 @@ const ScenarioResult = () => {
           <div className="cardBody">
             <h2>Scenario overview</h2>
             <p>Key metadata used for audit trails and reviewer context.</p>
+
+            {loading ? <div className="badge">Loading result…</div> : null}
+            {error ? (
+              <div className="badge badgeWarn">
+                Result API not available: {error} (showing mock data)
+              </div>
+            ) : null}
 
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
               <div className="badge">

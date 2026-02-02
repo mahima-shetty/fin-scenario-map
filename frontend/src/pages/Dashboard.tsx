@@ -63,10 +63,12 @@ const Dashboard = () => {
             >
               <span className="badge badgeOk">CORS enabled</span>
               <span className="badge badgeOk">Auth ready</span>
-              <span className="badge badgeWarn">Scenario API: pending</span>
+              <span className="badge badgeOk">
+                Scenario API: input/upload ready
+              </span>
             </div>
             <div className="helper">
-              Connect scenario endpoints to remove “pending”.
+              Result/list endpoints can be added next.
             </div>
           </div>
         </div>
@@ -100,8 +102,8 @@ const Dashboard = () => {
             <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
               <div className="badge badgeOk">Frontend: running</div>
               <div className="badge badgeOk">Backend: running</div>
-              <div className="badge badgeWarn">
-                Scenario endpoints: 404 (not implemented)
+              <div className="badge badgeOk">
+                Scenario endpoints: input/upload OK
               </div>
             </div>
           </div>
