@@ -1,7 +1,9 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from starlette import status
 import re
+import uuid
 
 # Support running as either:
 # - `uvicorn backend.main:app --reload` (package import)
@@ -17,6 +19,8 @@ try:
     )
     from .users import verify_user
     from .settings import get_settings
+    from .run_log import init_run_log
+    from .workflow.runner import run_scenario_workflow
 except ImportError:  # pragma: no cover
     from models import (
         LoginRequest,
@@ -28,12 +32,36 @@ except ImportError:  # pragma: no cover
     )
     from users import verify_user
     from settings import get_settings
+    from run_log import init_run_log
+    from workflow.runner import run_scenario_workflow
 
 settings = get_settings()
 
+# In-memory store for scenario results (keyed by scenario_id)
+_scenario_results: dict[str, dict] = {}
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: one log file per run; remove any previous run's log
+    init_run_log()
+    # Preload historical matcher dataset so first scenario submit doesn't timeout
+    try:
+        from .historical_matcher import preload_dataset
+        preload_dataset()
+    except Exception:
+        try:
+            from historical_matcher import preload_dataset
+            preload_dataset()
+        except Exception:
+            pass
+    yield
+    # Shutdown: nothing to do for run log (file stays for inspection until next run)
+    pass
+
 
 def create_app() -> FastAPI:
-    application = FastAPI(title=settings.app_name)
+    application = FastAPI(title=settings.app_name, lifespan=lifespan)
 
     application.add_middleware(
         CORSMiddleware,
@@ -76,6 +104,10 @@ def create_scenario(payload: ScenarioInputRequest):
         "description": _normalize_text(payload.description) if payload.description else "",
         "riskType": payload.riskType.value,
     }
+    scenario_id = f"scn-{uuid.uuid4().hex[:8]}"
+    result = run_scenario_workflow(scenario_id, normalized)
+    _scenario_results[scenario_id] = result
+    normalized["scenario_id"] = scenario_id
     return ScenarioInputResponse(data=normalized)
 
 
@@ -106,12 +138,23 @@ async def upload_scenario(file: UploadFile = File(...)):
 
 @app.get("/api/scenarios/{scenario_id}/result")
 def get_scenario_result(scenario_id: str):
-    # Mock result payload (shape matches frontend `ScenarioResultResponse`)
+    stored = _scenario_results.get(scenario_id)
+    if stored:
+        return {
+            "scenarioName": stored.get("scenarioName", scenario_id),
+            "riskType": stored.get("riskType", "Market Risk"),
+            "confidenceScore": stored.get("confidenceScore", 0.82),
+            "createdAt": stored.get("createdAt", ""),
+            "recommendations": stored.get("recommendations", []),
+            "historicalCases": stored.get("historicalCases", []),
+            "step_log": stored.get("step_log", []),
+        }
+    # Fallback mock when no stored result (e.g. old ID or direct URL)
     return {
         "scenarioName": f"Scenario {scenario_id}",
         "riskType": "Market Risk",
         "confidenceScore": 0.82,
-        "createdAt": "2026-02-01",
+        "createdAt": "",
         "recommendations": [
             "Increase capital buffer by 10%",
             "Reprice floating-rate products",
@@ -121,4 +164,5 @@ def get_scenario_result(scenario_id: str):
             {"id": "HC-001", "name": "2018 Rate Hike", "similarity": "87%"},
             {"id": "HC-002", "name": "2020 Inflation Spike", "similarity": "79%"},
         ],
+        "step_log": [],
     }

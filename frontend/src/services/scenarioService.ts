@@ -1,4 +1,4 @@
-import { apiClient } from "./apiClient";
+import { apiClient, SCENARIO_SUBMIT_TIMEOUT_MS } from "./apiClient";
 import type {
   ScenarioResultResponse,
   ScenarioSubmitRequest,
@@ -11,7 +11,8 @@ export async function submitScenario(
 ): Promise<ScenarioSubmitResponse> {
   const response = await apiClient.post<ScenarioSubmitResponse>(
     "/api/scenarios/input",
-    data
+    data,
+    { timeout: SCENARIO_SUBMIT_TIMEOUT_MS }
   );
   return response.data;
 }

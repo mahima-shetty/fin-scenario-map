@@ -37,6 +37,7 @@ Desktop.ini
 
 backend/__pycache__/*
 backend/main.pyc
+backend/logs/
 
 
 
