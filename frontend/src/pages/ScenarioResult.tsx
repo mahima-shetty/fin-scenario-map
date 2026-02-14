@@ -1,43 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import ButtonLink from "../components/ButtonLink";
 import { fetchScenarioResult } from "../services/scenarioService";
 import type { ScenarioResultResponse } from "../types/scenario";
 import { toApiError } from "../services/apiClient";
 
+const NA_DEFAULT: ScenarioResultResponse = {
+  scenarioName: "NA",
+  riskType: "NA",
+  confidenceScore: null,
+  createdAt: "NA",
+  recommendations: [],
+  historicalCases: [],
+};
+
 const ScenarioResult = () => {
   const { id } = useParams();
 
-  const mockResult: ScenarioResultResponse = useMemo(
-    () => ({
-      scenarioName: "Interest Rate Shock",
-      riskType: "Market Risk",
-      confidenceScore: 0.82,
-      createdAt: "2026-02-01",
-      recommendations: [
-        "Increase capital buffer by 10%",
-        "Reprice floating-rate products",
-        "Hedge long-term exposure",
-      ],
-      historicalCases: [
-        {
-          id: "HC-001",
-          name: "2018 Rate Hike",
-          similarity: "87%",
-        },
-        {
-          id: "HC-002",
-          name: "2020 Inflation Spike",
-          similarity: "79%",
-        },
-      ],
-    }),
-    []
-  );
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<ScenarioResultResponse>(mockResult);
+  const [result, setResult] = useState<ScenarioResultResponse>(NA_DEFAULT);
 
   useEffect(() => {
     if (!id) return;
@@ -49,11 +31,50 @@ const ScenarioResult = () => {
         setLoading(true);
         setError("");
         const res = await fetchScenarioResult(id);
-        if (!cancelled) setResult(res);
+        let toShow = res;
+        const isNaOnly =
+          (res.scenarioName === "NA" || !res.scenarioName?.trim()) &&
+          (res.riskType === "NA" || !res.riskType?.trim());
+        if (id && isNaOnly) {
+          try {
+            const stored = sessionStorage.getItem(`scenario_input_${id}`);
+            if (stored) {
+              const parsed = JSON.parse(stored) as Partial<ScenarioResultResponse>;
+              toShow = {
+                ...res,
+                scenarioName: parsed.scenarioName ?? res.scenarioName,
+                riskType: parsed.riskType ?? res.riskType,
+                description: parsed.description ?? res.description ?? "",
+                createdAt: parsed.createdAt ?? res.createdAt,
+              };
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (!cancelled) setResult(toShow);
       } catch (err) {
         if (!cancelled) {
           setError(toApiError(err).message);
-          setResult(mockResult);
+          let fallback: ScenarioResultResponse = NA_DEFAULT;
+          if (id) {
+            try {
+              const stored = sessionStorage.getItem(`scenario_input_${id}`);
+              if (stored) {
+                const parsed = JSON.parse(stored) as Partial<ScenarioResultResponse>;
+                fallback = {
+                  ...NA_DEFAULT,
+                  scenarioName: parsed.scenarioName ?? "NA",
+                  riskType: parsed.riskType ?? "NA",
+                  description: parsed.description ?? "",
+                  createdAt: parsed.createdAt ?? "NA",
+                };
+              }
+            } catch {
+              // ignore
+            }
+          }
+          setResult(fallback);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -65,7 +86,7 @@ const ScenarioResult = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, mockResult]);
+  }, [id]);
 
   return (
     <div>
@@ -104,7 +125,7 @@ const ScenarioResult = () => {
             {loading ? <div className="badge">Loading result…</div> : null}
             {error ? (
               <div className="badge badgeWarn">
-                Result API not available: {error} (showing mock data)
+                Result API not available: {error}
               </div>
             ) : null}
 
@@ -112,20 +133,35 @@ const ScenarioResult = () => {
               <div className="badge">
                 <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>Name</span>
                 &nbsp;—&nbsp;
-                <span style={{ fontWeight: 700 }}>{result.scenarioName}</span>
+                <span style={{ fontWeight: 700 }}>
+                  {result.scenarioName?.trim() || "NA"}
+                </span>
               </div>
               <div className="badge">
                 <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>Risk</span>
                 &nbsp;—&nbsp;
-                <span style={{ fontWeight: 700 }}>{result.riskType}</span>
+                <span style={{ fontWeight: 700 }}>
+                  {result.riskType?.trim() || "NA"}
+                </span>
               </div>
+              {result.description != null && result.description !== "" ? (
+                <div className="badge">
+                  <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>
+                    Description
+                  </span>
+                  &nbsp;—&nbsp;
+                  <span style={{ fontWeight: 600 }}>{result.description}</span>
+                </div>
+              ) : null}
               <div className="badge badgeOk">
                 <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>
                   Confidence
                 </span>
                 &nbsp;—&nbsp;
                 <span style={{ fontWeight: 800 }}>
-                  {(result.confidenceScore * 100).toFixed(0)}%
+                  {result.confidenceScore != null
+                    ? `${(result.confidenceScore * 100).toFixed(0)}%`
+                    : "NA"}
                 </span>
               </div>
               <div className="badge">
@@ -133,7 +169,9 @@ const ScenarioResult = () => {
                   Created
                 </span>
                 &nbsp;—&nbsp;
-                <span style={{ fontWeight: 700 }}>{result.createdAt}</span>
+                <span style={{ fontWeight: 700 }}>
+                  {result.createdAt?.trim() || "NA"}
+                </span>
               </div>
             </div>
           </div>
@@ -142,17 +180,19 @@ const ScenarioResult = () => {
         <div className="card">
           <div className="cardBody">
             <h2>Recommendations</h2>
-            <p>Suggested actions based on scenario analysis (mock).</p>
+            <p>Suggested actions based on scenario analysis.</p>
 
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-              {result.recommendations.map((rec, idx) => (
-                <div key={idx} className="badge">
-                  <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>
-                    REC-{String(idx + 1).padStart(2, "0")}
-                  </span>
-                  <span style={{ fontWeight: 650 }}>{rec}</span>
-                </div>
-              ))}
+              {result.recommendations?.length
+                ? result.recommendations.map((rec, idx) => (
+                    <div key={idx} className="badge">
+                      <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>
+                        REC-{String(idx + 1).padStart(2, "0")}
+                      </span>
+                      <span style={{ fontWeight: 650 }}>{rec}</span>
+                    </div>
+                  ))
+                : "NA"}
             </div>
           </div>
         </div>
@@ -161,30 +201,34 @@ const ScenarioResult = () => {
       <div className="card" style={{ marginTop: 14 }}>
         <div className="cardBody">
           <h2>Historical reference cases</h2>
-          <p>Closest historical events for comparative analysis (mock).</p>
+          <p>Closest historical events for comparative analysis.</p>
 
-          <table className="table" style={{ marginTop: 10 }}>
-            <thead>
-              <tr>
-                <th>Case ID</th>
-                <th>Name</th>
-                <th>Similarity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.historicalCases.map((hc) => (
-                <tr key={hc.id}>
-                  <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>
-                    {hc.id}
-                  </td>
-                  <td style={{ fontWeight: 700 }}>{hc.name}</td>
-                  <td>
-                    <span className="badge badgeOk">{hc.similarity}</span>
-                  </td>
+          {result.historicalCases?.length ? (
+            <table className="table" style={{ marginTop: 10 }}>
+              <thead>
+                <tr>
+                  <th>Case ID</th>
+                  <th>Name</th>
+                  <th>Similarity</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {result.historicalCases.map((hc) => (
+                  <tr key={hc.id}>
+                    <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>
+                      {hc.id}
+                    </td>
+                    <td style={{ fontWeight: 700 }}>{hc.name}</td>
+                    <td>
+                      <span className="badge badgeOk">{hc.similarity}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="badge" style={{ marginTop: 10 }}>NA</div>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import { apiClient } from "./apiClient";
+import { apiClient, SCENARIO_SUBMIT_TIMEOUT_MS } from "./apiClient";
 import type {
+  HistoricalCasesResponse,
   ScenarioResultResponse,
   ScenarioSubmitRequest,
   ScenarioSubmitResponse,
@@ -11,7 +12,8 @@ export async function submitScenario(
 ): Promise<ScenarioSubmitResponse> {
   const response = await apiClient.post<ScenarioSubmitResponse>(
     "/api/scenarios/input",
-    data
+    data,
+    { timeout: SCENARIO_SUBMIT_TIMEOUT_MS }
   );
   return response.data;
 }
@@ -38,6 +40,13 @@ export async function fetchScenarioResult(
 ): Promise<ScenarioResultResponse> {
   const response = await apiClient.get<ScenarioResultResponse>(
     `/api/scenarios/${encodeURIComponent(id)}/result`
+  );
+  return response.data;
+}
+
+export async function fetchHistoricalCases(): Promise<HistoricalCasesResponse> {
+  const response = await apiClient.get<HistoricalCasesResponse>(
+    "/api/historical-cases"
   );
   return response.data;
 }

@@ -1,27 +1,7 @@
 import ButtonLink from "../components/ButtonLink";
 
 const Dashboard = () => {
-  // Mock data for now
-  const recentScenarios = [
-    {
-      id: "scn-001",
-      name: "Credit Risk Stress Test",
-      risk: "Credit",
-      status: "Completed",
-    },
-    {
-      id: "scn-002",
-      name: "Liquidity Shock Scenario",
-      risk: "Liquidity",
-      status: "Processing",
-    },
-    {
-      id: "scn-003",
-      name: "Interest Rate Shock",
-      risk: "Market",
-      status: "Queued",
-    },
-  ];
+  const recentScenarios: Array<{ id: string; name: string; risk: string; status: string }> = [];
 
   return (
     <div>
@@ -38,15 +18,15 @@ const Dashboard = () => {
           <div className="cardBody">
             <div className="topbarTitle">Scenarios processed</div>
             <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>
-              128
+              —
             </div>
-            <div className="helper">Last 30 days</div>
+            <div className="helper">From stored scenarios (no mock data)</div>
           </div>
         </div>
         <div className="card">
           <div className="cardBody">
             <div className="topbarTitle">In progress</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>2</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>—</div>
             <div className="helper">Processing queue</div>
           </div>
         </div>
@@ -113,61 +93,67 @@ const Dashboard = () => {
       <div className="card">
         <div className="cardBody">
           <h2>Recent scenarios</h2>
-          <p>Most recent submissions (mock data).</p>
+          <p>Most recent submissions. Create a scenario to see entries here.</p>
 
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Risk</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentScenarios.map((scn) => (
-                <tr key={scn.id}>
-                  <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>
-                    {scn.id}
-                  </td>
-                  <td style={{ fontWeight: 700 }}>{scn.name}</td>
-                  <td>{scn.risk}</td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        scn.status === "Completed"
-                          ? "badgeOk"
-                          : scn.status === "Processing"
-                          ? "badgeWarn"
-                          : ""
-                      }`}
-                    >
-                      {scn.status}
-                    </span>
-                  </td>
-                  <td>
-                    {scn.status === "Completed" ? (
-                      <ButtonLink
-                        to={`/scenarios/${scn.id}/result`}
-                        variant="secondary"
-                      >
-                        View result
-                      </ButtonLink>
-                    ) : (
-                      <ButtonLink
-                        to={`/scenarios/${scn.id}/result`}
-                        variant="secondary"
-                        disabled
-                      >
-                        View result
-                      </ButtonLink>
-                    )}
-                  </td>
+          {recentScenarios.length > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Risk</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentScenarios.map((scn) => (
+                  <tr key={scn.id}>
+                    <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>
+                      {scn.id}
+                    </td>
+                    <td style={{ fontWeight: 700 }}>{scn.name}</td>
+                    <td>{scn.risk}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          scn.status === "Completed"
+                            ? "badgeOk"
+                            : scn.status === "Processing"
+                            ? "badgeWarn"
+                            : ""
+                        }`}
+                      >
+                        {scn.status}
+                      </span>
+                    </td>
+                    <td>
+                      {scn.status === "Completed" ? (
+                        <ButtonLink
+                          to={`/scenarios/${scn.id}/result`}
+                          variant="secondary"
+                        >
+                          View result
+                        </ButtonLink>
+                      ) : (
+                        <ButtonLink
+                          to={`/scenarios/${scn.id}/result`}
+                          variant="secondary"
+                          disabled
+                        >
+                          View result
+                        </ButtonLink>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="badge" style={{ marginTop: 8 }}>
+              No submissions yet
+            </div>
+          )}
         </div>
       </div>
     </div>

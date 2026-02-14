@@ -15,11 +15,26 @@ export interface ScenarioUploadResponse {
   filename: string;
 }
 
-// For future result endpoint wiring.
+/** One reference case from GET /api/historical-cases */
+export interface HistoricalCase {
+  id: string;
+  name: string;
+  issueDescription: string;
+  impact: string;
+  recommendations: string[];
+  riskType: string;
+}
+
+export interface HistoricalCasesResponse {
+  cases: HistoricalCase[];
+}
+
+// Matches backend result; confidenceScore may be null when missing (UI shows NA).
 export interface ScenarioResultResponse {
   scenarioName: string;
   riskType: string;
-  confidenceScore: number;
+  description?: string;
+  confidenceScore: number | null;
   createdAt: string;
   recommendations: string[];
   historicalCases: Array<{

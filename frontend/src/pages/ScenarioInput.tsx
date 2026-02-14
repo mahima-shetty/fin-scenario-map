@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import { submitScenario } from "../services/scenarioService";
@@ -11,24 +12,43 @@ const ScenarioInput = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [lastScenarioId, setLastScenarioId] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       setError("");
       setSuccess("");
-      await submitScenario({
+      setLastScenarioId(null);
+      const response = await submitScenario({
         name,
         description,
         riskType,
       });
 
+      const scenarioId = response?.data?.scenario_id;
+      if (typeof scenarioId === "string") {
+        setLastScenarioId(scenarioId);
+        try {
+          sessionStorage.setItem(
+            `scenario_input_${scenarioId}`,
+            JSON.stringify({
+              scenarioName: name.trim() || "NA",
+              riskType: riskType.trim() || "NA",
+              description: description?.trim() || "",
+              createdAt: new Date().toISOString().slice(0, 10),
+            })
+          );
+        } catch {
+          // ignore storage errors
+        }
+      }
       setSuccess("Scenario submitted successfully.");
       setName("");
       setDescription("");
       setRiskType("");
-    } catch (error) {
-      setError(toApiError(error).message);
+    } catch (err) {
+      setError(toApiError(err).message);
     } finally {
       setSubmitting(false);
     }
@@ -74,6 +94,18 @@ const ScenarioInput = () => {
 
             {error ? <div className="error">{error}</div> : null}
             {success ? <div className="badge badgeOk">{success}</div> : null}
+            {lastScenarioId ? (
+              <div style={{ marginTop: 8 }}>
+                <span className="helper">Scenario ID: </span>
+                <span style={{ fontWeight: 700, color: "rgba(241, 245, 249, 0.92)" }}>
+                  {lastScenarioId}
+                </span>
+                {" · "}
+                <Link to={`/scenarios/${lastScenarioId}/result`} style={{ color: "var(--accent)" }}>
+                  View result
+                </Link>
+              </div>
+            ) : null}
 
             <div
               style={{
