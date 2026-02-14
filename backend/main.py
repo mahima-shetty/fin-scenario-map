@@ -1,9 +1,18 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from starlette import status
 import re
 import uuid
+
+# Load .env from project root so DATABASE_URL is set (backend/.env or project .env)
+try:
+    from dotenv import load_dotenv
+    _env_dir = Path(__file__).resolve().parent.parent
+    load_dotenv(_env_dir / ".env")
+except ImportError:
+    pass
 
 # Support running as either:
 # - `uvicorn backend.main:app --reload` (package import)
@@ -21,6 +30,7 @@ try:
     from .settings import get_settings
     from .run_log import init_run_log
     from .workflow.runner import run_scenario_workflow
+    from . import db
 except ImportError:  # pragma: no cover
     from models import (
         LoginRequest,
@@ -34,18 +44,32 @@ except ImportError:  # pragma: no cover
     from settings import get_settings
     from run_log import init_run_log
     from workflow.runner import run_scenario_workflow
+    import db
 
 settings = get_settings()
 
-# In-memory store for scenario results (keyed by scenario_id)
-_scenario_results: dict[str, dict] = {}
+# NA-style response when scenario not found (no hardcoded mock data)
+def _na_result(scenario_id: str) -> dict:
+    return {
+        "scenarioName": "NA",
+        "riskType": "NA",
+        "description": "",
+        "confidenceScore": None,
+        "createdAt": "NA",
+        "recommendations": [],
+        "historicalCases": [],
+        "step_log": [],
+    }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: one log file per run; remove any previous run's log
+    # Startup: one log file per run; init DB; preload historical matcher
     init_run_log()
-    # Preload historical matcher dataset so first scenario submit doesn't timeout
+    try:
+        db.init_db()
+    except Exception:
+        pass
     try:
         from .historical_matcher import preload_dataset
         preload_dataset()
@@ -56,7 +80,7 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
     yield
-    # Shutdown: nothing to do for run log (file stays for inspection until next run)
+    # Shutdown: nothing to do
     pass
 
 
@@ -106,7 +130,16 @@ def create_scenario(payload: ScenarioInputRequest):
     }
     scenario_id = f"scn-{uuid.uuid4().hex[:8]}"
     result = run_scenario_workflow(scenario_id, normalized)
-    _scenario_results[scenario_id] = result
+    try:
+        db.save_scenario(
+            scenario_id,
+            normalized["name"],
+            normalized["description"],
+            normalized["riskType"],
+            result,
+        )
+    except Exception:
+        pass  # log already in db layer if needed; do not fail the request
     normalized["scenario_id"] = scenario_id
     return ScenarioInputResponse(data=normalized)
 
@@ -138,31 +171,50 @@ async def upload_scenario(file: UploadFile = File(...)):
 
 @app.get("/api/scenarios/{scenario_id}/result")
 def get_scenario_result(scenario_id: str):
-    stored = _scenario_results.get(scenario_id)
+    try:
+        stored = db.get_scenario_by_id(scenario_id)
+    except Exception:
+        stored = None
     if stored:
+        # Use submitted input as fallback so "what you sent" always reflects on the page
+        scenario_name = stored.get("scenarioName") or stored.get("inputName") or "NA"
+        risk_type = stored.get("riskType") or stored.get("inputRiskType") or "NA"
         return {
-            "scenarioName": stored.get("scenarioName", scenario_id),
-            "riskType": stored.get("riskType", "Market Risk"),
-            "confidenceScore": stored.get("confidenceScore", 0.82),
-            "createdAt": stored.get("createdAt", ""),
-            "recommendations": stored.get("recommendations", []),
-            "historicalCases": stored.get("historicalCases", []),
-            "step_log": stored.get("step_log", []),
+            "scenarioName": scenario_name,
+            "riskType": risk_type,
+            "description": stored.get("inputDescription") or "",
+            "confidenceScore": stored.get("confidenceScore"),
+            "createdAt": stored.get("createdAt") or "NA",
+            "recommendations": stored.get("recommendations") or [],
+            "historicalCases": stored.get("historicalCases") or [],
+            "step_log": stored.get("step_log") or [],
         }
-    # Fallback mock when no stored result (e.g. old ID or direct URL)
-    return {
-        "scenarioName": f"Scenario {scenario_id}",
-        "riskType": "Market Risk",
-        "confidenceScore": 0.82,
-        "createdAt": "",
-        "recommendations": [
-            "Increase capital buffer by 10%",
-            "Reprice floating-rate products",
-            "Hedge long-term exposure",
-        ],
-        "historicalCases": [
-            {"id": "HC-001", "name": "2018 Rate Hike", "similarity": "87%"},
-            {"id": "HC-002", "name": "2020 Inflation Spike", "similarity": "79%"},
-        ],
-        "step_log": [],
-    }
+    return _na_result(scenario_id)
+
+
+@app.get("/api/historical-cases")
+def list_historical_cases():
+    """Return the 50 preloaded reference cases for the Historical Cases UI tab. Seeds table if empty or missing."""
+    try:
+        cases = db.get_reference_cases_list()
+    except Exception as e:
+        cases = []
+        try:
+            from .run_log import get_run_logger
+            get_run_logger().warning("historical-cases get_reference_cases_list failed: %s", e)
+        except ImportError:
+            from run_log import get_run_logger
+            get_run_logger().warning("historical-cases get_reference_cases_list failed: %s", e)
+    if not cases:
+        try:
+            db.init_db()
+            db.seed_reference_cases()
+            cases = db.get_reference_cases_list()
+        except Exception as e:
+            try:
+                from .run_log import get_run_logger
+                get_run_logger().warning("historical-cases seed failed: %s", e)
+            except ImportError:
+                from run_log import get_run_logger
+                get_run_logger().warning("historical-cases seed failed: %s", e)
+    return {"cases": cases or []}

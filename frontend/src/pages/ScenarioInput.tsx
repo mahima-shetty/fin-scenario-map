@@ -29,6 +29,19 @@ const ScenarioInput = () => {
       const scenarioId = response?.data?.scenario_id;
       if (typeof scenarioId === "string") {
         setLastScenarioId(scenarioId);
+        try {
+          sessionStorage.setItem(
+            `scenario_input_${scenarioId}`,
+            JSON.stringify({
+              scenarioName: name.trim() || "NA",
+              riskType: riskType.trim() || "NA",
+              description: description?.trim() || "",
+              createdAt: new Date().toISOString().slice(0, 10),
+            })
+          );
+        } catch {
+          // ignore storage errors
+        }
       }
       setSuccess("Scenario submitted successfully.");
       setName("");

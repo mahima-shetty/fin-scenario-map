@@ -14,6 +14,12 @@ class Settings(BaseModel):
     app_name: str = "Fin Scenario Map API"
     environment: str = Field(default="dev", description="Environment name (dev/test/prod)")
 
+    # Database
+    database_url: str = Field(
+        default="postgresql://localhost/fin_scenario_map",
+        description="PostgreSQL connection URL",
+    )
+
     # CORS
     cors_allow_origins: List[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
@@ -34,10 +40,12 @@ def get_settings() -> Settings:
     Supported env vars:
     - APP_NAME
     - ENVIRONMENT
+    - DATABASE_URL
     - CORS_ALLOW_ORIGINS (comma-separated)
     - MAX_UPLOAD_SIZE_BYTES
     - ALLOWED_UPLOAD_CONTENT_TYPES (comma-separated)
     """
+    database_url = os.getenv("DATABASE_URL") or Settings().database_url
     cors = _split_csv(os.getenv("CORS_ALLOW_ORIGINS"))
     allowed_types = _split_csv(os.getenv("ALLOWED_UPLOAD_CONTENT_TYPES"))
 
@@ -47,6 +55,7 @@ def get_settings() -> Settings:
     return Settings(
         app_name=os.getenv("APP_NAME") or Settings().app_name,
         environment=os.getenv("ENVIRONMENT") or Settings().environment,
+        database_url=database_url,
         cors_allow_origins=cors or Settings().cors_allow_origins,
         max_upload_size_bytes=max_upload_size or Settings().max_upload_size_bytes,
         allowed_upload_content_types=allowed_types or Settings().allowed_upload_content_types,

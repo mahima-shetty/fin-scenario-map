@@ -1,9 +1,12 @@
 """
-Historical case matching: similarity search over the financial fraud dataset.
-Uses TF-IDF + cosine similarity; no LLM required.
+Historical case matching: similarity search over our own document set.
+Uses TF-IDF + cosine similarity; no external datasets.
+Documents are in backend/data/historical_cases.json.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 from typing import Any
 
@@ -15,14 +18,13 @@ def _log():
         from run_log import get_run_logger
         return get_run_logger()
 
-# Lazy load heavy deps so app can start even if sklearn/datasets fail
+# Lazy load
 _vectorizer: Any = None
 _corpus_matrix: Any = None
 _corpus_meta: list[dict] = []  # [{"id", "name", "text"}, ...]
 _loaded = False
 
-MAX_CORPUS_CHARS = 2000  # truncate long Fillings per row
-MAX_NAME_CHARS = 80
+MAX_TEXT_CHARS = 5000  # truncate document text for TF-IDF
 TOP_K_DEFAULT = 5
 
 
@@ -32,7 +34,12 @@ def _truncate(s: str, max_chars: int) -> str:
     return s[:max_chars] if len(s) > max_chars else s
 
 
-def _load_dataset() -> None:
+def _path_to_cases_file() -> str:
+    base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "data", "historical_cases.json")
+
+
+def _load_documents() -> None:
     global _vectorizer, _corpus_matrix, _corpus_meta, _loaded
     if _loaded:
         return
@@ -40,41 +47,63 @@ def _load_dataset() -> None:
     _corpus_meta = []
     try:
         from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore[import-untyped]
-        from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
-        from datasets import load_dataset  # type: ignore[import-untyped]
-
-        ds = load_dataset("amitkedia/Financial-Fraud-Dataset", trust_remote_code=True)
-        train = ds.get("train")
-        if train is None or len(train) == 0:
+        # Load 50 preloaded reference cases from PostgreSQL, then add user scenarios
+        try:
+            from .db import get_reference_cases_for_historical, get_all_scenarios_for_historical
+            ref_docs = get_reference_cases_for_historical()
+            user_docs = get_all_scenarios_for_historical()
+        except Exception:
+            try:
+                from db import get_reference_cases_for_historical, get_all_scenarios_for_historical
+                ref_docs = get_reference_cases_for_historical()
+                user_docs = get_all_scenarios_for_historical()
+            except Exception:
+                ref_docs = []
+                user_docs = []
+        db_docs = ref_docs + user_docs
+        if db_docs:
+            corpus_texts = [d["text"] for d in db_docs]
+            _corpus_meta = [{"id": d["id"], "name": d["name"], "text": d["text"]} for d in db_docs]
+            vectorizer = TfidfVectorizer(max_features=10000, stop_words="english", ngram_range=(1, 2))
+            _corpus_matrix = vectorizer.fit_transform(corpus_texts)
+            _vectorizer = vectorizer
+            _log().info("historical_matcher loaded from DB ref=%s user=%s", len(ref_docs), len(user_docs))
+            return
+        # Fallback: JSON file
+        path = _path_to_cases_file()
+        if not os.path.isfile(path):
+            _log().warning("historical_matcher file not found: %s", path)
+            return
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+        if not isinstance(raw, list) or len(raw) == 0:
+            _log().warning("historical_matcher no documents in %s", path)
             return
         corpus_texts = []
-        for i, row in enumerate(train):
-            fillings = row.get("Fillings") or row.get("fillings") or ""
-            fraud = row.get("Fraud") or row.get("fraud") or ""
-            text = _truncate(str(fillings), MAX_CORPUS_CHARS)
-            if not text:
-                text = " "
+        for i, doc in enumerate(raw):
+            if not isinstance(doc, dict):
+                continue
+            doc_id = doc.get("id") or f"HC-{i + 1:03d}"
+            name = (doc.get("name") or "").strip() or f"Case {i + 1}"
+            text = _truncate(str(doc.get("text") or ""), MAX_TEXT_CHARS) or " "
             corpus_texts.append(text)
-            name = _truncate(text, MAX_NAME_CHARS) or f"Case {i + 1}"
-            if fraud:
-                name = _truncate(f"{name} [{str(fraud)[:15]}]", MAX_NAME_CHARS)
-            _corpus_meta.append({"id": f"HC-{i + 1:03d}", "name": name, "text": text})
+            _corpus_meta.append({"id": doc_id, "name": name, "text": text})
         if not corpus_texts:
             return
         vectorizer = TfidfVectorizer(max_features=10000, stop_words="english", ngram_range=(1, 2))
         _corpus_matrix = vectorizer.fit_transform(corpus_texts)
         _vectorizer = vectorizer
-        _log().info("historical_matcher loaded dataset rows=%s", len(_corpus_meta))
+        _log().info("historical_matcher loaded documents rows=%s path=%s", len(_corpus_meta), path)
     except Exception as e:
-        _log().warning("historical_matcher dataset load failed: %s", e, exc_info=True)
+        _log().warning("historical_matcher load failed: %s", e, exc_info=True)
         _vectorizer = None
         _corpus_matrix = None
         _corpus_meta = []
 
 
 def preload_dataset() -> None:
-    """Call at app startup so first scenario submit does not trigger a slow load."""
-    _load_dataset()
+    """Call at app startup so first scenario submit is fast."""
+    _load_documents()
 
 
 def find_similar_cases(query_text: str, top_k: int = TOP_K_DEFAULT) -> list[dict[str, str]]:
@@ -82,13 +111,9 @@ def find_similar_cases(query_text: str, top_k: int = TOP_K_DEFAULT) -> list[dict
     Return top_k historical cases most similar to query_text.
     Each item: {"id": "HC-001", "name": "...", "similarity": "87%"}.
     """
-    _load_dataset()
+    _load_documents()
     if _vectorizer is None or _corpus_matrix is None or not _corpus_meta:
-        _log().warning("historical_matcher using fallback (dataset not available)")
-        return [
-            {"id": "HC-001", "name": "2018 Rate Hike", "similarity": "87%"},
-            {"id": "HC-002", "name": "2020 Inflation Spike", "similarity": "79%"},
-        ]
+        return []
     from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
 
     query_clean = _truncate(query_text, 5000) or " "

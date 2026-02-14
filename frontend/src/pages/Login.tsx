@@ -104,7 +104,7 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
               <span className="helper">
-                Demo auth only (mock backend validation).
+                Demo auth only.
               </span>
             </div>
           </div>

@@ -60,7 +60,7 @@ def _get_historical_matcher():
 
 
 def orchestrator(state: WorkflowState) -> WorkflowState:
-    """Match to historical cases (fraud dataset similarity) and recommendations (mock for now)."""
+    """Match to historical cases (TF-IDF similarity over stored/JSON corpus) and set recommendations (from config/DB when available)."""
     scenario_id = state.get("scenario_id") or ""
     logger.info("orchestrator started scenario_id=%s", scenario_id)
     try:
@@ -68,13 +68,9 @@ def orchestrator(state: WorkflowState) -> WorkflowState:
             _log_step("orchestrator", "skipped", state, "previous error")
             return state
         processed = state.get("processed") or {}
-        risk_type = processed.get("riskType") or "Market"
-        state["recommendations"] = [
-            "Increase capital buffer by 10%",
-            "Reprice floating-rate products",
-            "Hedge long-term exposure",
-        ]
-        # Real historical cases from fraud dataset via TF-IDF similarity
+        risk_type = processed.get("riskType") or ""
+        state["recommendations"] = []  # No hardcoded values; populate from DB/config if needed
+        # Historical cases from stored scenarios (DB) or JSON corpus via TF-IDF similarity
         query_text = f"{processed.get('name', '')} {processed.get('description', '')} {risk_type}"
         find_similar_cases = _get_historical_matcher()
         state["historical_cases"] = find_similar_cases(query_text.strip() or "risk", top_k=5)

@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Button from "./Button";
 import { getAuthState, signOut } from "../services/authStorage";
 
-function Icon({ name }: { name: "dashboard" | "upload" | "create" | "login" }) {
+function Icon({ name }: { name: "dashboard" | "upload" | "create" | "history" | "login" }) {
   const common = { width: 18, height: 18, fill: "none", stroke: "currentColor", strokeWidth: 2 };
   switch (name) {
     case "dashboard":
@@ -29,6 +29,13 @@ function Icon({ name }: { name: "dashboard" | "upload" | "create" | "login" }) {
           <path d="M5 12h14" />
         </svg>
       );
+    case "history":
+      return (
+        <svg {...common} viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+          <path d="M12 6v6l4 2" />
+        </svg>
+      );
     case "login":
       return (
         <svg {...common} viewBox="0 0 24 24" aria-hidden="true">
@@ -52,7 +59,9 @@ export default function AppLayout() {
         ? "Upload Scenario"
         : location.pathname.startsWith("/scenarios/new")
           ? "Create Scenario"
-          : "Fin Scenario Map";
+          : location.pathname === "/historical-cases"
+            ? "Historical Cases"
+            : "Fin Scenario Map";
 
   return (
     <div className="appShell">
@@ -96,6 +105,14 @@ export default function AppLayout() {
           >
             <Icon name="create" />
             Create
+          </NavLink>
+
+          <NavLink
+            to="/historical-cases"
+            className={({ isActive }) => `navItem ${isActive ? "navItemActive" : ""}`}
+          >
+            <Icon name="history" />
+            Historical Cases
           </NavLink>
         </nav>
       </aside>

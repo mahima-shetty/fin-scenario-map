@@ -60,10 +60,10 @@ def run_scenario_workflow(scenario_id: str, input_data: dict) -> dict:
     step_log = last_state.get("step_log") or []
     return {
         "scenario_id": scenario_id,
-        "scenarioName": processed.get("name") or scenario_id,
-        "riskType": processed.get("riskType") or "Market Risk",
-        "confidenceScore": 0.82,
-        "createdAt": _default_created_at(step_log),
+        "scenarioName": processed.get("name") or "",
+        "riskType": processed.get("riskType") or "",
+        "confidenceScore": None,  # No hardcoded value; UI shows NA when missing
+        "createdAt": _default_created_at(step_log) or "",
         "recommendations": last_state.get("recommendations") or [],
         "historicalCases": last_state.get("historical_cases") or [],
         "step_log": step_log,
