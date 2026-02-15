@@ -14,6 +14,9 @@ export const apiClient = axios.create({
 /** Longer timeout for scenario submit (dataset + workflow can be slow on first run). */
 export const SCENARIO_SUBMIT_TIMEOUT_MS = 90_000;
 
+/** Longer timeout for upload (parsing + N workflows). */
+export const SCENARIO_UPLOAD_TIMEOUT_MS = 120_000;
+
 export type ApiError = {
   message: string;
   status?: number;

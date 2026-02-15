@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Counterparty default - Corp XYZ",
+    "description": "Major counterparty defaults on derivatives; collateral shortfall.",
+    "riskType": "Credit"
+  },
+  {
+    "name": "IT outage - core banking",
+    "description": "Prolonged core banking system outage; manual fallback.",
+    "riskType": "Operational"
+  }
+]

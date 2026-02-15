@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { uploadScenario } from "../services/scenarioService";
 import { toApiError } from "../services/apiClient";
 
 const ScenarioUpload = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,8 +46,21 @@ const ScenarioUpload = () => {
 
     try {
       const res = await uploadScenario(file);
-      setSuccess(`Uploaded successfully: ${res.filename}`);
-      setFile(null);
+      const count = res.scenario_ids?.length ?? 0;
+      if (count > 0) {
+        setSuccess(
+          count === 1
+            ? `1 scenario created and mapped. Redirecting to result…`
+            : `${count} scenarios created and mapped. Redirecting to first result…`
+        );
+        setFile(null);
+        navigate(`/scenarios/${res.scenario_ids[0]}/result`, { replace: true });
+      } else {
+        setSuccess(
+          `File received (${res.filename}). No valid scenarios in file—add rows with a name.`
+        );
+        setFile(null);
+      }
     } catch (error) {
       setError(toApiError(error).message);
     } finally {
@@ -58,8 +73,9 @@ const ScenarioUpload = () => {
       <div style={{ marginBottom: 12 }}>
         <h1>Upload scenario</h1>
         <p>
-          Upload a scenario file for ingestion (CSV/Excel/PDF can be supported
-          later).
+          Upload a CSV or JSON file with scenarios. Each row (or object) is
+          parsed, run through the full mapping workflow, and you’ll be taken to
+          the first result.
         </p>
       </div>
 

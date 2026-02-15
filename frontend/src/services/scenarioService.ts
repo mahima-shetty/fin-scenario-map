@@ -1,4 +1,4 @@
-import { apiClient, SCENARIO_SUBMIT_TIMEOUT_MS } from "./apiClient";
+import { apiClient, SCENARIO_SUBMIT_TIMEOUT_MS, SCENARIO_UPLOAD_TIMEOUT_MS } from "./apiClient";
 import type {
   HistoricalCasesResponse,
   RecentScenariosResponse,
@@ -30,6 +30,7 @@ export async function uploadScenario(
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: SCENARIO_UPLOAD_TIMEOUT_MS,
     }
   );
 

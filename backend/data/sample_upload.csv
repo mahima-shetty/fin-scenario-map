@@ -1,0 +1,4 @@
+name,description,riskType
+Interest rate spike in EU,Central banks raise rates; bond portfolios under stress,Market
+Fraudulent wire transfer,Unauthorized SWIFT transfer from corporate account,Fraud
+Funding shortfall in stress,Liquidity gap in 30-day stress scenario,Liquidity

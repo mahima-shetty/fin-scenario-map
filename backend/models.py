@@ -65,3 +65,4 @@ class ScenarioUploadResponse(BaseModel):
     filename: str
     content_type: str | None = None
     size_bytes: int
+    scenario_ids: list[str] = []  # one per scenario created from parsed CSV/JSON
