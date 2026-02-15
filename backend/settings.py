@@ -40,6 +40,9 @@ class Settings(BaseModel):
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     jwt_access_token_expire_minutes: int = Field(default=60 * 24, description="Access token expiry in minutes")
 
+    # Encryption at rest (PRD FR9 – AES-256). Base64-encoded 32-byte key; empty = no encryption.
+    data_encryption_key: str = Field(default="", description="Base64-encoded 32-byte key for AES-256-GCM at rest")
+
 
 def get_settings() -> Settings:
     """
@@ -54,6 +57,8 @@ def get_settings() -> Settings:
     - ALLOWED_UPLOAD_CONTENT_TYPES (comma-separated)
     - GROQ_API_KEY (for AI-generated recommendations)
     - JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+    - DATA_ENCRYPTION_KEY (base64 32-byte key for encryption at rest; PRD FR9)
+    - In transit: use HTTPS/TLS in production (deployment concern).
     """
     database_url = os.getenv("DATABASE_URL") or Settings().database_url
     cors = _split_csv(os.getenv("CORS_ALLOW_ORIGINS"))
@@ -67,6 +72,7 @@ def get_settings() -> Settings:
     jwt_algorithm = (os.getenv("JWT_ALGORITHM") or "").strip() or Settings().jwt_algorithm
     jwt_expire = os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
     jwt_access_token_expire_minutes = int(jwt_expire) if jwt_expire and jwt_expire.isdigit() else Settings().jwt_access_token_expire_minutes
+    data_encryption_key = (os.getenv("DATA_ENCRYPTION_KEY") or "").strip()
 
     return Settings(
         app_name=os.getenv("APP_NAME") or Settings().app_name,
@@ -79,5 +85,6 @@ def get_settings() -> Settings:
         jwt_secret_key=jwt_secret_key,
         jwt_algorithm=jwt_algorithm,
         jwt_access_token_expire_minutes=jwt_access_token_expire_minutes,
+        data_encryption_key=data_encryption_key or Settings().data_encryption_key,
     )
 

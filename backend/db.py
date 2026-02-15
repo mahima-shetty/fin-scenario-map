@@ -1,11 +1,30 @@
 """
 PostgreSQL persistence for scenarios. All collected details are stored and used as historical data.
+Sensitive fields (input_description, audit_log.details) are encrypted at rest when DATA_ENCRYPTION_KEY is set (PRD FR9).
 """
 from __future__ import annotations
 
 import json
 from contextlib import contextmanager
 from typing import Any
+
+
+def _encrypt(s: str) -> str:
+    try:
+        from .encryption import encrypt_value
+        return encrypt_value(s or "") or ""
+    except Exception:
+        return s or ""
+
+
+def _decrypt(s: str) -> str:
+    if not s:
+        return ""
+    try:
+        from .encryption import decrypt_value
+        return decrypt_value(s) or ""
+    except Exception:
+        return s
 
 try:
     import psycopg2
@@ -222,7 +241,7 @@ def save_scenario(
             (
                 scenario_id,
                 input_name or "",
-                input_description or "",
+                _encrypt(input_description or ""),
                 input_risk_type or "",
                 result.get("scenarioName") or "",
                 result.get("riskType") or "",
@@ -324,7 +343,7 @@ def get_scenario_by_id(scenario_id: str) -> dict[str, Any] | None:
         "scenarioName": scenario_name,
         "riskType": risk_type,
         "inputName": row["input_name"] or "",
-        "inputDescription": row["input_description"] or "",
+        "inputDescription": _decrypt(row["input_description"] or ""),
         "inputRiskType": row["input_risk_type"] or "",
         "confidenceScore": row["confidence_score"],
         "createdAt": created_str,
@@ -387,7 +406,7 @@ def get_all_scenarios_for_historical() -> list[dict[str, Any]]:
     for i, row in enumerate(rows or []):
         sid = row.get("scenario_id") or f"scn-{i + 1}"
         name = (row.get("input_name") or "").strip() or f"Scenario {i + 1}"
-        desc = (row.get("input_description") or "").strip()
+        desc = _decrypt(row.get("input_description") or "").strip()
         risk = (row.get("input_risk_type") or "").strip()
         text = f"{name} {desc} {risk}".strip() or " "
         out.append({"id": sid, "name": name[:80], "text": text[:5000]})
@@ -400,7 +419,7 @@ def insert_audit_log(user_email: str, action: str, resource: str | None = None, 
         with _cursor() as cur:
             cur.execute(
                 "INSERT INTO audit_log (user_email, action, resource, details) VALUES (%s, %s, %s, %s)",
-                (user_email, action, resource or "", details or ""),
+                (user_email, action, resource or "", _encrypt(details or "")),
             )
     except Exception:
         pass
@@ -418,6 +437,8 @@ def get_audit_logs(limit: int = 100) -> list[dict[str, Any]]:
         out = []
         for row in rows or []:
             d = dict(row)
+            if d.get("details"):
+                d["details"] = _decrypt(d["details"])
             if d.get("created_at") is not None and hasattr(d["created_at"], "isoformat"):
                 d["created_at"] = d["created_at"].isoformat()
             out.append(d)
