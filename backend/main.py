@@ -324,19 +324,17 @@ def list_recent_scenarios(limit: int = 20, _user: CurrentUser = ...):
     return {"scenarios": scenarios}
 
 
-@app.get("/api/scenarios/{scenario_id}/result")
-def get_scenario_result(scenario_id: str, _user: CurrentUser = ...):
+def _scenario_result_payload(scenario_id: str) -> dict:
+    """Build scenario result payload (mapping and recommendations). Used by both /result and /map (PRD)."""
     try:
         stored = db.get_scenario_by_id(scenario_id)
     except Exception:
         stored = None
     if stored:
-        # stored already uses input fallback for name/risk in db.get_scenario_by_id
         scenario_name = (stored.get("scenarioName") or "").strip() or (stored.get("inputName") or "").strip() or "—"
         risk_type = (stored.get("riskType") or "").strip() or (stored.get("inputRiskType") or "").strip() or "—"
         description = (stored.get("inputDescription") or "").strip()
         created_at = (stored.get("createdAt") or "").strip() or "—"
-        # Derive confidence from historical case similarities when not stored
         confidence = stored.get("confidenceScore")
         if confidence is None:
             hist = stored.get("historicalCases") or []
@@ -363,6 +361,18 @@ def get_scenario_result(scenario_id: str, _user: CurrentUser = ...):
             "step_log": stored.get("step_log") or [],
         }
     return _na_result(scenario_id)
+
+
+@app.get("/api/scenarios/{scenario_id}/result")
+def get_scenario_result(scenario_id: str, _user: CurrentUser = ...):
+    """Return scenario mapping and recommendations (UI result page)."""
+    return _scenario_result_payload(scenario_id)
+
+
+@app.get("/api/scenarios/{scenario_id}/map")
+def get_scenario_map(scenario_id: str, _user: CurrentUser = ...):
+    """Alias for /result per PRD example (GET /api/scenarios/{id}/map). Same payload: mapping and recommendations."""
+    return _scenario_result_payload(scenario_id)
 
 
 @app.get("/api/historical-cases")
