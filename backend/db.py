@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS upload_files (
+    id SERIAL PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    object_key TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_upload_files_created_at ON upload_files(created_at DESC);
 """
 
 
@@ -445,3 +454,15 @@ def get_audit_logs(limit: int = 100) -> list[dict[str, Any]]:
         return out
     except Exception:
         return []
+
+
+def save_upload_file_record(file_name: str, object_key: str, size_bytes: int) -> None:
+    """Record an S3 upload for audit. No-op on DB error."""
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "INSERT INTO upload_files (file_name, object_key, size_bytes) VALUES (%s, %s, %s)",
+                (file_name, object_key, size_bytes),
+            )
+    except Exception:
+        pass

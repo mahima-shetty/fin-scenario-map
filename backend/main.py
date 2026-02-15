@@ -247,6 +247,15 @@ async def upload_scenario(file: UploadFile = File(...), current_user: CurrentUse
             detail=f"File too large (max {settings.max_upload_size_bytes} bytes)",
         )
 
+    object_key = None
+    try:
+        from .s3_storage import upload_file
+        object_key = upload_file(content, file.filename or "upload", file.content_type)
+        if object_key:
+            db.save_upload_file_record(file.filename or "upload", object_key, size_bytes)
+    except Exception:
+        pass
+
     cases = _parse_upload_content(content, file.content_type, file.filename or "")
     scenario_ids: list[str] = []
     filename = file.filename or "upload"
