@@ -134,14 +134,14 @@ const ScenarioResult = () => {
                 <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>Name</span>
                 &nbsp;—&nbsp;
                 <span style={{ fontWeight: 700 }}>
-                  {result.scenarioName?.trim() || "NA"}
+                  {result.scenarioName?.trim() || "—"}
                 </span>
               </div>
               <div className="badge">
                 <span style={{ color: "rgba(226, 232, 240, 0.72)" }}>Risk</span>
                 &nbsp;—&nbsp;
                 <span style={{ fontWeight: 700 }}>
-                  {result.riskType?.trim() || "NA"}
+                  {result.riskType?.trim() || "—"}
                 </span>
               </div>
               {result.description != null && result.description !== "" ? (
@@ -161,7 +161,7 @@ const ScenarioResult = () => {
                 <span style={{ fontWeight: 800 }}>
                   {result.confidenceScore != null
                     ? `${(result.confidenceScore * 100).toFixed(0)}%`
-                    : "NA"}
+                    : "—"}
                 </span>
               </div>
               <div className="badge">
@@ -170,7 +170,7 @@ const ScenarioResult = () => {
                 </span>
                 &nbsp;—&nbsp;
                 <span style={{ fontWeight: 700 }}>
-                  {result.createdAt?.trim() || "NA"}
+                  {result.createdAt?.trim() || "—"}
                 </span>
               </div>
             </div>

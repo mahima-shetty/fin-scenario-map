@@ -29,6 +29,19 @@ export interface HistoricalCasesResponse {
   cases: HistoricalCase[];
 }
 
+/** One row from GET /api/scenarios/recent */
+export interface RecentScenario {
+  id: string;
+  name: string;
+  risk: string;
+  createdAt: string;
+  status: string;
+}
+
+export interface RecentScenariosResponse {
+  scenarios: RecentScenario[];
+}
+
 // Matches backend result; confidenceScore may be null when missing (UI shows NA).
 export interface ScenarioResultResponse {
   scenarioName: string;

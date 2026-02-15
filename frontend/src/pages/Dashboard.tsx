@@ -1,7 +1,36 @@
+import { useEffect, useState } from "react";
 import ButtonLink from "../components/ButtonLink";
+import { fetchRecentScenarios } from "../services/scenarioService";
+import type { RecentScenario } from "../types/scenario";
+import { toApiError } from "../services/apiClient";
 
 const Dashboard = () => {
-  const recentScenarios: Array<{ id: string; name: string; risk: string; status: string }> = [];
+  const [recentScenarios, setRecentScenarios] = useState<RecentScenario[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetchRecentScenarios(20);
+        if (!cancelled) setRecentScenarios(res.scenarios ?? []);
+      } catch (err) {
+        if (!cancelled) {
+          setError(toApiError(err).message);
+          setRecentScenarios([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div>
@@ -18,7 +47,7 @@ const Dashboard = () => {
           <div className="cardBody">
             <div className="topbarTitle">Scenarios processed</div>
             <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>
-              —
+              {loading ? "—" : recentScenarios.length}
             </div>
             <div className="helper">From stored scenarios (no mock data)</div>
           </div>
@@ -95,13 +124,22 @@ const Dashboard = () => {
           <h2>Recent scenarios</h2>
           <p>Most recent submissions. Create a scenario to see entries here.</p>
 
-          {recentScenarios.length > 0 ? (
+          {error ? (
+            <div className="badge badgeWarn" style={{ marginTop: 8 }}>
+              {error}
+            </div>
+          ) : loading ? (
+            <div className="badge" style={{ marginTop: 8 }}>
+              Loading…
+            </div>
+          ) : recentScenarios.length > 0 ? (
             <table className="table">
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Name</th>
                   <th>Risk</th>
+                  <th>Created</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -114,6 +152,9 @@ const Dashboard = () => {
                     </td>
                     <td style={{ fontWeight: 700 }}>{scn.name}</td>
                     <td>{scn.risk}</td>
+                    <td style={{ color: "rgba(226, 232, 240, 0.78)" }}>
+                      {scn.createdAt}
+                    </td>
                     <td>
                       <span
                         className={`badge ${
@@ -128,22 +169,12 @@ const Dashboard = () => {
                       </span>
                     </td>
                     <td>
-                      {scn.status === "Completed" ? (
-                        <ButtonLink
-                          to={`/scenarios/${scn.id}/result`}
-                          variant="secondary"
-                        >
-                          View result
-                        </ButtonLink>
-                      ) : (
-                        <ButtonLink
-                          to={`/scenarios/${scn.id}/result`}
-                          variant="secondary"
-                          disabled
-                        >
-                          View result
-                        </ButtonLink>
-                      )}
+                      <ButtonLink
+                        to={`/scenarios/${scn.id}/result`}
+                        variant="secondary"
+                      >
+                        View result
+                      </ButtonLink>
                     </td>
                   </tr>
                 ))}
