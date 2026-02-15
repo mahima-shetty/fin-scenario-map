@@ -13,6 +13,9 @@ export interface ScenarioSubmitResponse {
 // Matches current backend response in `backend/main.py`
 export interface ScenarioUploadResponse {
   filename: string;
+  content_type?: string | null;
+  size_bytes?: number;
+  scenario_ids: string[];
 }
 
 /** One reference case from GET /api/historical-cases */

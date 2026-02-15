@@ -224,16 +224,48 @@ async def upload_scenario(file: UploadFile = File(...)):
         )
 
     cases = _parse_upload_content(content, file.content_type, file.filename or "")
-    if cases:
+    scenario_ids: list[str] = []
+    filename = file.filename or "upload"
+
+    for case in cases:
+        name = _normalize_text((case.get("name") or "").strip())
+        if not name:
+            continue
+        description = _normalize_text((case.get("description") or "").strip())
+        risk_type = (case.get("riskType") or "Market").strip() or "Market"
+        normalized = {"name": name, "description": description, "riskType": risk_type}
+        scenario_id = f"scn-{uuid.uuid4().hex[:8]}"
+        result = run_scenario_workflow(scenario_id, normalized)
         try:
-            db.save_scenario_cases_from_upload(cases, file.filename or "upload")
+            db.save_scenario(
+                scenario_id,
+                normalized["name"],
+                normalized["description"],
+                normalized["riskType"],
+                result,
+            )
+            db.save_scenario_case(
+                scenario_id,
+                source="upload",
+                name=normalized["name"],
+                description=normalized["description"],
+                risk_type=normalized["riskType"],
+                file_name=filename,
+            )
+            scenario_ids.append(scenario_id)
         except Exception:
             pass
 
+    try:
+        db.save_scenario_cases_from_upload(cases, filename)
+    except Exception:
+        pass
+
     return ScenarioUploadResponse(
-        filename=file.filename,
+        filename=filename,
         content_type=file.content_type,
         size_bytes=size_bytes,
+        scenario_ids=scenario_ids,
     )
 
 
