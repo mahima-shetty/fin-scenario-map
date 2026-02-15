@@ -42,6 +42,20 @@ CREATE TABLE IF NOT EXISTS reference_cases (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_reference_cases_risk_type ON reference_cases(risk_type);
+
+CREATE TABLE IF NOT EXISTS scenario_cases (
+    id SERIAL PRIMARY KEY,
+    scenario_id TEXT NOT NULL,
+    source TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    risk_type TEXT NOT NULL,
+    file_name TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_scenario_cases_scenario_id ON scenario_cases(scenario_id);
+CREATE INDEX IF NOT EXISTS idx_scenario_cases_source ON scenario_cases(source);
+CREATE INDEX IF NOT EXISTS idx_scenario_cases_created_at ON scenario_cases(created_at DESC);
 """
 
 
@@ -211,6 +225,75 @@ def save_scenario(
         )
 
 
+def save_scenario_case(
+    scenario_id: str,
+    source: str,
+    name: str,
+    description: str,
+    risk_type: str,
+    file_name: str | None = None,
+) -> None:
+    """Insert one row into scenario_cases (create or upload)."""
+    with _cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO scenario_cases (scenario_id, source, name, description, risk_type, file_name)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (scenario_id, source, (name or "").strip() or "—", description or "", risk_type or "Market", file_name),
+        )
+
+
+def save_scenario_cases_from_upload(
+    cases: list[dict[str, Any]],
+    file_name: str,
+) -> None:
+    """Insert multiple rows into scenario_cases from an upload. Each case: name, description, risk_type."""
+    import uuid
+    with _cursor() as cur:
+        for i, case in enumerate(cases):
+            scenario_id = f"scn-upload-{uuid.uuid4().hex[:8]}-{i}"
+            name = (case.get("name") or "").strip() or "—"
+            description = (case.get("description") or "").strip()
+            risk_type = (case.get("riskType") or case.get("risk_type") or "Market").strip() or "Market"
+            cur.execute(
+                """
+                INSERT INTO scenario_cases (scenario_id, source, name, description, risk_type, file_name)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (scenario_id, "upload", name, description, risk_type, file_name),
+            )
+
+
+def get_recent_scenarios(limit: int = 20) -> list[dict[str, Any]]:
+    """Return most recent scenarios for dashboard: id, name, risk, createdAt, status. Ordered by created_at DESC."""
+    with _cursor() as cur:
+        cur.execute(
+            """
+            SELECT scenario_id, input_name, result_scenario_name, input_risk_type, result_risk_type, created_at
+            FROM scenarios
+            ORDER BY created_at DESC
+            LIMIT %s
+            """,
+            (max(1, min(limit, 100)),),
+        )
+        rows = cur.fetchall()
+    out = []
+    for row in rows or []:
+        created_at = row.get("created_at")
+        created_str = created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""
+        name = (row.get("result_scenario_name") or row.get("input_name") or "").strip() or "—"
+        risk = (row.get("result_risk_type") or row.get("input_risk_type") or "").strip() or "—"
+        out.append({
+            "id": row.get("scenario_id") or "",
+            "name": name,
+            "risk": risk,
+            "createdAt": created_str,
+            "status": "Completed",
+        })
+    return out
+
+
 def get_scenario_by_id(scenario_id: str) -> dict[str, Any] | None:
     """Load one scenario by scenario_id. Returns None if not found."""
     with _cursor() as cur:
@@ -221,15 +304,20 @@ def get_scenario_by_id(scenario_id: str) -> dict[str, Any] | None:
         row = cur.fetchone()
     if not row:
         return None
+    # Use input as fallback so UI never shows empty/NA when we have submitted data
+    scenario_name = (row.get("result_scenario_name") or row.get("input_name") or "").strip()
+    risk_type = (row.get("result_risk_type") or row.get("input_risk_type") or "").strip()
+    created_at = row.get("created_at")
+    created_str = created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""
     return {
         "scenario_id": row["scenario_id"],
-        "scenarioName": row["result_scenario_name"] or "",
-        "riskType": row["result_risk_type"] or "",
+        "scenarioName": scenario_name,
+        "riskType": risk_type,
         "inputName": row["input_name"] or "",
         "inputDescription": row["input_description"] or "",
         "inputRiskType": row["input_risk_type"] or "",
         "confidenceScore": row["confidence_score"],
-        "createdAt": row["created_at"].strftime("%Y-%m-%d") if row.get("created_at") else "",
+        "createdAt": created_str,
         "recommendations": row["recommendations"] if isinstance(row["recommendations"], list) else (json.loads(row["recommendations"]) if row["recommendations"] else []),
         "historicalCases": row["historical_cases"] if isinstance(row["historical_cases"], list) else (json.loads(row["historical_cases"]) if row["historical_cases"] else []),
         "step_log": row["step_log"] if isinstance(row["step_log"], list) else (json.loads(row["step_log"]) if row["step_log"] else []),

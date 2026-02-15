@@ -32,6 +32,9 @@ class Settings(BaseModel):
         default_factory=lambda: ["text/csv", "application/pdf", "application/json"]
     )
 
+    # Groq (recommendation engine)
+    groq_api_key: str = Field(default="", description="Groq API key for AI-generated recommendations")
+
 
 def get_settings() -> Settings:
     """
@@ -44,6 +47,7 @@ def get_settings() -> Settings:
     - CORS_ALLOW_ORIGINS (comma-separated)
     - MAX_UPLOAD_SIZE_BYTES
     - ALLOWED_UPLOAD_CONTENT_TYPES (comma-separated)
+    - GROQ_API_KEY (for AI-generated recommendations)
     """
     database_url = os.getenv("DATABASE_URL") or Settings().database_url
     cors = _split_csv(os.getenv("CORS_ALLOW_ORIGINS"))
@@ -52,6 +56,8 @@ def get_settings() -> Settings:
     max_upload_raw = os.getenv("MAX_UPLOAD_SIZE_BYTES")
     max_upload_size = int(max_upload_raw) if max_upload_raw and max_upload_raw.isdigit() else None
 
+    groq_api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+
     return Settings(
         app_name=os.getenv("APP_NAME") or Settings().app_name,
         environment=os.getenv("ENVIRONMENT") or Settings().environment,
@@ -59,5 +65,6 @@ def get_settings() -> Settings:
         cors_allow_origins=cors or Settings().cors_allow_origins,
         max_upload_size_bytes=max_upload_size or Settings().max_upload_size_bytes,
         allowed_upload_content_types=allowed_types or Settings().allowed_upload_content_types,
+        groq_api_key=groq_api_key,
     )
 

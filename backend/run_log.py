@@ -23,6 +23,7 @@ def init_run_log() -> None:
     """
     Call once at app startup.
     Removes any existing log files in backend/logs/, then creates the single run log file.
+    Also adds a StreamHandler so INFO and WARNING appear in the console (e.g. uvicorn terminal).
     """
     global _run_file_handler
     _ensure_log_dir()
@@ -38,10 +39,15 @@ def init_run_log() -> None:
         logger.removeHandler(_run_file_handler)
         _run_file_handler.close()
         _run_file_handler = None
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s %(message)s")
     handler = logging.FileHandler(log_path, encoding="utf-8")
-    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s %(message)s"))
+    handler.setFormatter(fmt)
     logger.addHandler(handler)
     _run_file_handler = handler
+    if not any(h for h in logger.handlers if isinstance(h, logging.StreamHandler)):
+        console = logging.StreamHandler()
+        console.setFormatter(fmt)
+        logger.addHandler(console)
     logger.info("run log initialized path=%s", log_path)
 
 
