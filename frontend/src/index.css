@@ -394,3 +394,138 @@ p {
   color: rgba(254, 226, 226, 0.92);
   font-size: 13px;
 }
+
+/* Workflow visualization (scenario result) */
+.workflowPipeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.workflowStep {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  font-size: 13px;
+}
+
+.workflowStepStart,
+.workflowStepEnd {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+}
+
+.workflowStepNode {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workflowStep--ok {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.workflowStep--error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.workflowStep--skipped {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+}
+
+.workflowStepStatus {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.workflowStepStatus--ok {
+  background: rgba(34, 211, 238, 0.2);
+  color: var(--cyan-400);
+}
+
+.workflowStepStatus--error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.workflowStepStatus--skipped {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.workflowStepConnector {
+  width: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--border), var(--border-strong));
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.workflowTimeline {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.workflowTimelineItem {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 8px;
+}
+
+.workflowTimelineItem:last-child {
+  margin-bottom: 0;
+}
+
+.workflowTimelineItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workflowTimelineStep {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.workflowTimelineStatus {
+  font-size: 11px;
+}
+
+.workflowTimelineStatus--ok {
+  border-color: rgba(34, 211, 238, 0.25);
+  background: rgba(34, 211, 238, 0.10);
+}
+
+.workflowTimelineStatus--error {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.10);
+}
+
+.workflowTimelineStatus--skipped {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+}
+
+.workflowTimelineTs {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.workflowTimelineDetail {
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.82);
+  margin-top: 6px;
+}

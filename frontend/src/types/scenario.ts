@@ -45,6 +45,14 @@ export interface RecentScenariosResponse {
   scenarios: RecentScenario[];
 }
 
+/** One workflow step from backend step_log (step, status, ts, detail?). */
+export interface WorkflowStepEntry {
+  step: string;
+  status: string;
+  ts?: string;
+  detail?: string;
+}
+
 // Matches backend result; confidenceScore may be null when missing (UI shows NA).
 export interface ScenarioResultResponse {
   scenarioName: string;
@@ -58,4 +66,5 @@ export interface ScenarioResultResponse {
     name: string;
     similarity: string;
   }>;
+  step_log?: WorkflowStepEntry[];
 }

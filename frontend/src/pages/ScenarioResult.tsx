@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import ButtonLink from "../components/ButtonLink";
 import { fetchScenarioResult } from "../services/scenarioService";
@@ -12,6 +12,7 @@ const NA_DEFAULT: ScenarioResultResponse = {
   createdAt: "NA",
   recommendations: [],
   historicalCases: [],
+  step_log: [],
 };
 
 const ScenarioResult = () => {
@@ -231,6 +232,66 @@ const ScenarioResult = () => {
           )}
         </div>
       </div>
+
+      {(result.step_log?.length ?? 0) > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="cardBody">
+            <h2>Workflow</h2>
+            <p>Steps executed for mapping and recommendations.</p>
+
+            <div className="workflowPipeline" style={{ marginTop: 14 }}>
+              <div className="workflowStep workflowStepStart">
+                <span className="workflowStepLabel">Input</span>
+              </div>
+              {(result.step_log ?? []).map((entry, idx) => (
+                <React.Fragment key={idx}>
+                  <div className="workflowStepConnector" aria-hidden />
+                  <div
+                    className={`workflowStep workflowStepNode workflowStep--${entry.status}`}
+                >
+                  <span className="workflowStepLabel">
+                    {entry.step === "scenario_processor"
+                      ? "Parse & validate"
+                      : entry.step === "orchestrator"
+                        ? "Match & recommend"
+                        : entry.step}
+                  </span>
+                  <span className={`workflowStepStatus workflowStepStatus--${entry.status}`}>
+                    {entry.status}
+                  </span>
+                </div>
+                </React.Fragment>
+              ))}
+              <div className="workflowStepConnector" aria-hidden />
+              <div className="workflowStep workflowStepEnd">
+                <span className="workflowStepLabel">Result</span>
+              </div>
+            </div>
+
+            <div className="workflowTimeline" style={{ marginTop: 20 }}>
+              <h3 style={{ fontSize: 14, color: "var(--muted)", marginBottom: 10 }}>
+                Step log
+              </h3>
+              {(result.step_log ?? []).map((entry, idx) => (
+                <div key={idx} className="workflowTimelineItem">
+                  <div className="workflowTimelineItemHeader">
+                    <span className="workflowTimelineStep">{entry.step}</span>
+                    <span className={`badge workflowTimelineStatus workflowTimelineStatus--${entry.status}`}>
+                      {entry.status}
+                    </span>
+                  </div>
+                  {entry.ts ? (
+                    <div className="workflowTimelineTs">{entry.ts}</div>
+                  ) : null}
+                  {entry.detail ? (
+                    <div className="workflowTimelineDetail">{entry.detail}</div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
