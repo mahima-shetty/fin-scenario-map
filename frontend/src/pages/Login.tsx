@@ -25,8 +25,8 @@ export default function LoginPage() {
     try {
       setLoading(true);
       const res = await loginUser({ email, password });
-      if (res.success) {
-        signIn(email);
+      if (res.success && res.access_token) {
+        signIn(res.access_token, email, res.role);
         const from = (location.state as { from?: string } | null)?.from;
         navigate(from || "/", { replace: true });
       } else {

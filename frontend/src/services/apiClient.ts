@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getToken, signOut } from "./authStorage";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -10,6 +11,25 @@ export const apiClient = axios.create({
     Accept: "application/json",
   },
 });
+
+apiClient.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      signOut();
+      window.location.replace("/login");
+    }
+    return Promise.reject(err);
+  },
+);
 
 /** Longer timeout for scenario submit (dataset + workflow can be slow on first run). */
 export const SCENARIO_SUBMIT_TIMEOUT_MS = 90_000;

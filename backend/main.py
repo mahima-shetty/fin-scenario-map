@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from typing import Annotated
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from starlette import status
 import csv
@@ -29,7 +30,8 @@ try:
         ScenarioInputResponse,
         ScenarioUploadResponse,
     )
-    from .users import verify_user
+    from .users import verify_user, get_user_role
+    from .auth import create_access_token, get_current_user, require_admin
     from .settings import get_settings
     from .run_log import init_run_log
     from .workflow.runner import run_scenario_workflow
@@ -43,7 +45,8 @@ except ImportError:  # pragma: no cover
         ScenarioInputResponse,
         ScenarioUploadResponse,
     )
-    from users import verify_user
+    from users import verify_user, get_user_role
+    from auth import create_access_token, get_current_user, require_admin
     from settings import get_settings
     from run_log import init_run_log
     from workflow.runner import run_scenario_workflow
@@ -105,6 +108,10 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+CurrentUser = Annotated[dict, Depends(get_current_user)]
+AdminUser = Annotated[dict, Depends(require_admin)]
+
+
 def _normalize_text(value: str) -> str:
     # Trim, collapse internal whitespace, keep readable output.
     value = value.strip()
@@ -114,9 +121,20 @@ def _normalize_text(value: str) -> str:
 @app.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest):
     if verify_user(request.email, request.password):
-        return LoginResponse(success=True, message="Login successful")
-    else:
-        return LoginResponse(success=False, message="Invalid email or password")
+        role = get_user_role(request.email)
+        token = create_access_token(subject=request.email, role=role)
+        try:
+            db.insert_audit_log(request.email, "login", resource="auth", details="success")
+        except Exception:
+            pass
+        return LoginResponse(
+            success=True,
+            message="Login successful",
+            access_token=token,
+            token_type="bearer",
+            role=role,
+        )
+    return LoginResponse(success=False, message="Invalid email or password")
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -125,7 +143,7 @@ def health():
 
 
 @app.get("/api/status")
-def get_status():
+def get_status(_user: CurrentUser):
     """Return vector store status so you can verify ChromaDB is used (vector_store should be 'chromadb')."""
     try:
         from .historical_matcher import get_vector_store_status
@@ -139,7 +157,7 @@ def get_status():
 
 
 @app.post("/api/scenarios/input", response_model=ScenarioInputResponse)
-def create_scenario(payload: ScenarioInputRequest):
+def create_scenario(payload: ScenarioInputRequest, current_user: CurrentUser):
     normalized = {
         "name": _normalize_text(payload.name),
         "description": _normalize_text(payload.description) if payload.description else "",
@@ -165,6 +183,12 @@ def create_scenario(payload: ScenarioInputRequest):
         )
     except Exception:
         pass  # log already in db layer if needed; do not fail the request
+    try:
+        db.insert_audit_log(
+            current_user["sub"], "scenario_create", resource=scenario_id, details=normalized.get("name", ""),
+        )
+    except Exception:
+        pass
     normalized["scenario_id"] = scenario_id
     return ScenarioInputResponse(data=normalized)
 
@@ -208,7 +232,7 @@ def _parse_upload_content(content: bytes, content_type: str | None, filename: st
 
 
 @app.post("/api/scenarios/upload", response_model=ScenarioUploadResponse)
-async def upload_scenario(file: UploadFile = File(...)):
+async def upload_scenario(file: UploadFile = File(...), current_user: CurrentUser = ...):
     if file.content_type and file.content_type not in settings.allowed_upload_content_types:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -260,6 +284,12 @@ async def upload_scenario(file: UploadFile = File(...)):
         db.save_scenario_cases_from_upload(cases, filename)
     except Exception:
         pass
+    try:
+        db.insert_audit_log(
+            current_user["sub"], "scenario_upload", resource=filename, details=f"{len(scenario_ids)} scenarios",
+        )
+    except Exception:
+        pass
 
     return ScenarioUploadResponse(
         filename=filename,
@@ -270,7 +300,7 @@ async def upload_scenario(file: UploadFile = File(...)):
 
 
 @app.get("/api/scenarios/recent")
-def list_recent_scenarios(limit: int = 20):
+def list_recent_scenarios(limit: int = 20, _user: CurrentUser = ...):
     """Return most recent scenario submissions for the dashboard."""
     try:
         scenarios = db.get_recent_scenarios(limit=limit)
@@ -286,7 +316,7 @@ def list_recent_scenarios(limit: int = 20):
 
 
 @app.get("/api/scenarios/{scenario_id}/result")
-def get_scenario_result(scenario_id: str):
+def get_scenario_result(scenario_id: str, _user: CurrentUser = ...):
     try:
         stored = db.get_scenario_by_id(scenario_id)
     except Exception:
@@ -327,7 +357,7 @@ def get_scenario_result(scenario_id: str):
 
 
 @app.get("/api/historical-cases")
-def list_historical_cases():
+def list_historical_cases(_user: CurrentUser = ...):
     """Return the 50 preloaded reference cases for the Historical Cases UI tab. Seeds table if empty or missing."""
     try:
         cases = db.get_reference_cases_list()
@@ -352,3 +382,13 @@ def list_historical_cases():
                 from run_log import get_run_logger
                 get_run_logger().warning("historical-cases seed failed: %s", e)
     return {"cases": cases or []}
+
+
+@app.get("/api/admin/audit-logs")
+def get_audit_logs(limit: int = 100, _admin: AdminUser = ...):
+    """Return recent audit log entries. Admin role required (US4)."""
+    try:
+        entries = db.get_audit_logs(limit=min(limit, 500))
+    except Exception:
+        entries = []
+    return {"audit_logs": entries}

@@ -56,6 +56,16 @@ CREATE TABLE IF NOT EXISTS scenario_cases (
 CREATE INDEX IF NOT EXISTS idx_scenario_cases_scenario_id ON scenario_cases(scenario_id);
 CREATE INDEX IF NOT EXISTS idx_scenario_cases_source ON scenario_cases(source);
 CREATE INDEX IF NOT EXISTS idx_scenario_cases_created_at ON scenario_cases(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    user_email TEXT NOT NULL,
+    action TEXT NOT NULL,
+    resource TEXT,
+    details TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
 """
 
 
@@ -382,3 +392,35 @@ def get_all_scenarios_for_historical() -> list[dict[str, Any]]:
         text = f"{name} {desc} {risk}".strip() or " "
         out.append({"id": sid, "name": name[:80], "text": text[:5000]})
     return out
+
+
+def insert_audit_log(user_email: str, action: str, resource: str | None = None, details: str | None = None) -> None:
+    """Append an audit log entry. No-op if DB fails."""
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "INSERT INTO audit_log (user_email, action, resource, details) VALUES (%s, %s, %s, %s)",
+                (user_email, action, resource or "", details or ""),
+            )
+    except Exception:
+        pass
+
+
+def get_audit_logs(limit: int = 100) -> list[dict[str, Any]]:
+    """Return most recent audit log entries for admin. Returns [] on error."""
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT id, user_email, action, resource, details, created_at FROM audit_log ORDER BY created_at DESC LIMIT %s",
+                (limit,),
+            )
+            rows = cur.fetchall()
+        out = []
+        for row in rows or []:
+            d = dict(row)
+            if d.get("created_at") is not None and hasattr(d["created_at"], "isoformat"):
+                d["created_at"] = d["created_at"].isoformat()
+            out.append(d)
+        return out
+    except Exception:
+        return []

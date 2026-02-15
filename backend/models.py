@@ -6,9 +6,13 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class LoginResponse(BaseModel):
     success: bool
     message: str
+    access_token: str | None = None
+    token_type: str = "bearer"
+    role: str | None = None
 
 
 class RiskType(str, Enum):

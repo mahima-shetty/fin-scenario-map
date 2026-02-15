@@ -61,7 +61,9 @@ export default function AppLayout() {
           ? "Create Scenario"
           : location.pathname === "/historical-cases"
             ? "Historical Cases"
-            : "Fin Scenario Map";
+            : location.pathname.startsWith("/admin")
+              ? "Audit logs"
+              : "Fin Scenario Map";
 
   return (
     <div className="appShell">
@@ -114,6 +116,16 @@ export default function AppLayout() {
             <Icon name="history" />
             Historical Cases
           </NavLink>
+
+          {auth.role === "admin" && (
+            <NavLink
+              to="/admin/audit-logs"
+              className={({ isActive }) => `navItem ${isActive ? "navItemActive" : ""}`}
+            >
+              <Icon name="history" />
+              Audit logs
+            </NavLink>
+          )}
         </nav>
       </aside>
 

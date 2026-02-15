@@ -35,12 +35,16 @@ coverage/
 Thumbs.db
 Desktop.ini
 
-backend/__pycache__/*
-backend/main.pyc
+# Project docs (PRD/HLD/LLD – local only)
+Project Documents/
+
+# Backend
+backend/__pycache__/
+backend/*.pyc
 backend/logs/
 backend/data/chromadb/
+*.sqlite3
 
-
-
+# Notebooks
 notebooks/.ipynb_checkpoints/
 **/.ipynb_checkpoints/

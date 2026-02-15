@@ -35,6 +35,11 @@ class Settings(BaseModel):
     # Groq (recommendation engine)
     groq_api_key: str = Field(default="", description="Groq API key for AI-generated recommendations")
 
+    # JWT authentication
+    jwt_secret_key: str = Field(default="change-me-in-production", description="Secret for signing JWTs")
+    jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
+    jwt_access_token_expire_minutes: int = Field(default=60 * 24, description="Access token expiry in minutes")
+
 
 def get_settings() -> Settings:
     """
@@ -48,6 +53,7 @@ def get_settings() -> Settings:
     - MAX_UPLOAD_SIZE_BYTES
     - ALLOWED_UPLOAD_CONTENT_TYPES (comma-separated)
     - GROQ_API_KEY (for AI-generated recommendations)
+    - JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
     """
     database_url = os.getenv("DATABASE_URL") or Settings().database_url
     cors = _split_csv(os.getenv("CORS_ALLOW_ORIGINS"))
@@ -57,6 +63,10 @@ def get_settings() -> Settings:
     max_upload_size = int(max_upload_raw) if max_upload_raw and max_upload_raw.isdigit() else None
 
     groq_api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+    jwt_secret_key = (os.getenv("JWT_SECRET_KEY") or "").strip() or Settings().jwt_secret_key
+    jwt_algorithm = (os.getenv("JWT_ALGORITHM") or "").strip() or Settings().jwt_algorithm
+    jwt_expire = os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
+    jwt_access_token_expire_minutes = int(jwt_expire) if jwt_expire and jwt_expire.isdigit() else Settings().jwt_access_token_expire_minutes
 
     return Settings(
         app_name=os.getenv("APP_NAME") or Settings().app_name,
@@ -66,5 +76,8 @@ def get_settings() -> Settings:
         max_upload_size_bytes=max_upload_size or Settings().max_upload_size_bytes,
         allowed_upload_content_types=allowed_types or Settings().allowed_upload_content_types,
         groq_api_key=groq_api_key,
+        jwt_secret_key=jwt_secret_key,
+        jwt_algorithm=jwt_algorithm,
+        jwt_access_token_expire_minutes=jwt_access_token_expire_minutes,
     )
 
