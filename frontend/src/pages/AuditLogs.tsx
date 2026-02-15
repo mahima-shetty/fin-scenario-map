@@ -22,7 +22,7 @@ export default function AuditLogs() {
         setLoading(true);
         setError("");
         const res = await apiClient.get<{ audit_logs: AuditLogEntry[] }>(
-          "/api/admin/audit-logs",
+          "/api/audit/logs",
           { params: { limit: 100 } },
         );
         if (!cancelled) setLogs(res.data.audit_logs ?? []);

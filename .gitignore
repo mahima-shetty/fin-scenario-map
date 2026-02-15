@@ -42,6 +42,7 @@ Project Documents/
 backend/__pycache__/
 backend/*.pyc
 backend/logs/
+backend/data/chromadb/chroma.sqlite3
 backend/data/chromadb/
 *.sqlite3
 

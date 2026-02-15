@@ -384,11 +384,22 @@ def list_historical_cases(_user: CurrentUser = ...):
     return {"cases": cases or []}
 
 
-@app.get("/api/admin/audit-logs")
-def get_audit_logs(limit: int = 100, _admin: AdminUser = ...):
-    """Return recent audit log entries. Admin role required (US4)."""
+def _audit_logs_response(limit: int) -> dict:
+    """Shared response for audit log APIs. Admin-only is enforced by caller."""
     try:
         entries = db.get_audit_logs(limit=min(limit, 500))
     except Exception:
         entries = []
     return {"audit_logs": entries}
+
+
+@app.get("/api/audit/logs")
+def get_audit_logs_api(limit: int = 100, _admin: AdminUser = ...):
+    """Return recent audit log entries (PRD FR10). Admin role required."""
+    return _audit_logs_response(limit)
+
+
+@app.get("/api/admin/audit-logs")
+def get_audit_logs_admin(limit: int = 100, _admin: AdminUser = ...):
+    """Return recent audit log entries. Admin role required (US4). Alias of GET /api/audit/logs."""
+    return _audit_logs_response(limit)
