@@ -1,0 +1,46 @@
+# Git and IDE
+.git
+.gitignore
+.idea
+.vscode
+.cursor
+
+# Env and secrets (never in image)
+.env
+.env.*
+!.env.example
+
+# Python
+venv
+.venv
+env
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+*.egg-info
+
+# Node
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/coverage
+
+# Backend runtime data (recreate in container if needed)
+backend/logs
+backend/data/chromadb
+backend/__pycache__
+*.sqlite3
+
+# Docs and misc
+Project Documents
+*.md
+!docs/README.md
+
+# Build outputs (we build inside Docker)
+dist
+build

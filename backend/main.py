@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette import status
 import csv
 import io
@@ -422,3 +423,10 @@ def get_audit_logs_api(limit: int = 100, _admin: AdminUser = ...):
 def get_audit_logs_admin(limit: int = 100, _admin: AdminUser = ...):
     """Return recent audit log entries. Admin role required (US4). Alias of GET /api/audit/logs."""
     return _audit_logs_response(limit)
+
+
+# Serve built frontend when running in Docker (frontend/dist present at project root)
+_frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=_frontend_dist / "assets"), name="assets")
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="static")
